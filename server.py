@@ -69,7 +69,7 @@ async def websocket_endpoint(websocket: WebSocket):
             )
 
             async with clientes_lock:
-                
+
                 clientes[cliente_id] = {
                     "websocket": websocket,
                     "tipo": "RECEPTOR",
@@ -128,6 +128,10 @@ async def websocket_endpoint(websocket: WebSocket):
             if mensagem["type"] == "websocket.disconnect":
                 break
 
+            # ==========================================
+            # MENSAGEM DE TEXTO / JSON
+            # ==========================================
+
             if "text" in mensagem and mensagem["text"]:
 
                 dados = json.loads(
@@ -138,11 +142,14 @@ async def websocket_endpoint(websocket: WebSocket):
                     "tipo"
                 )
 
-                # =========================
+                # ==========================================
                 # MAIN -> LIST
-                # =========================
+                # ==========================================
 
-                if tipo_cliente == "MAIN" and tipo == "LIST":
+                if (
+                    tipo_cliente == "MAIN"
+                    and tipo == "LIST"
+                ):
 
                     lista = []
 
@@ -172,24 +179,27 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     continue
 
-                # =========================
+                # ==========================================
                 # MAIN -> SEE_REQUEST
-                # =========================
+                # ==========================================
 
-                if tipo_cliente == "MAIN" and tipo == "SEE_REQUEST":
-                
+                if (
+                    tipo_cliente == "MAIN"
+                    and tipo == "SEE_REQUEST"
+                ):
+
                     receptor_id = dados.get(
                         "id"
                     )
-                
+
                     async with clientes_lock:
-                
+
                         receptor = clientes.get(
                             receptor_id
                         )
-                
+
                         if receptor is None:
-                
+
                             await enviar_json(
                                 websocket,
                                 {
@@ -197,11 +207,11 @@ async def websocket_endpoint(websocket: WebSocket):
                                     "mensagem": "Receptor não encontrado."
                                 }
                             )
-                
+
                             continue
-                
+
                         if receptor.get("tipo") != "RECEPTOR":
-                
+
                             await enviar_json(
                                 websocket,
                                 {
@@ -209,21 +219,21 @@ async def websocket_endpoint(websocket: WebSocket):
                                     "mensagem": "Destino inválido."
                                 }
                             )
-                
+
                             continue
-                
+
                         receptor["main"] = websocket
                         receptor["main_receptor"] = receptor_id
-                
+
                         websocket_receptor = receptor[
                             "websocket"
                         ]
-                
+
                     print(
                         "[SERVER] SEE_REQUEST ->",
                         receptor_id
                     )
-                
+
                     await enviar_json(
                         websocket_receptor,
                         {
@@ -231,136 +241,165 @@ async def websocket_endpoint(websocket: WebSocket):
                             "origem": "MAIN"
                         }
                     )
-                
+
                     continue
 
-                # =========================
+                # ==========================================
                 # RECEPTOR -> MAIN
-                # =========================
+                # ==========================================
 
                 if tipo_cliente == "RECEPTOR":
 
                     async with clientes_lock:
-                
+
                         receptor = clientes.get(
                             cliente_id
                         )
-                
+
                         if receptor is None:
                             continue
-                
+
                         main = receptor.get(
                             "main"
                         )
-                
+
                     if main is not None:
-                
-                        await main.send_bytes(
-                            mensagem["bytes"]
-                        )
-                
+
+                        try:
+
+                            await main.send_text(
+                                mensagem["text"]
+                            )
+
+                        except Exception as erro:
+
+                            print(
+                                "[SERVER] Erro RECEPTOR -> MAIN:",
+                                repr(erro)
+                            )
+
                     continue
 
-                # =========================
+                # ==========================================
                 # MAIN -> RECEPTOR
-                # =========================
+                # ==========================================
 
                 if tipo_cliente == "MAIN":
 
                     receptor_id = dados.get(
                         "destino"
                     )
-                
+
                     if not receptor_id:
-                        receptor_id = receptor_selecionado
-                
-                    if not receptor_id:
+
                         print(
-                            "[SERVER] MAIN enviou ação sem receptor."
+                            "[SERVER] AÇÃO sem destino:",
+                            mensagem["text"]
                         )
+
                         continue
-                
+
                     async with clientes_lock:
-                
+
                         receptor = clientes.get(
                             receptor_id
                         )
-                
+
                         if receptor is None:
+
+                            print(
+                                "[SERVER] Receptor não encontrado:",
+                                receptor_id
+                            )
+
                             continue
-                
+
                         if receptor.get("tipo") != "RECEPTOR":
                             continue
-                
+
                         websocket_receptor = receptor[
                             "websocket"
                         ]
-                
+
                     try:
-                
+
                         await websocket_receptor.send_text(
                             mensagem["text"]
                         )
-                
+
                         print(
-                            "[SERVER] AÇÃO ENVIADA:",
+                            "[SERVER] AÇÃO ENVIADA ->",
+                            receptor_id,
                             mensagem["text"]
                         )
-                
+
                     except Exception as erro:
-                
+
                         print(
                             "[SERVER] Erro ao enviar ação:",
                             repr(erro)
                         )
-                
+
                     continue
 
+            # ==========================================
+            # MENSAGEM BINÁRIA
+            # ==========================================
+
             elif "bytes" in mensagem and mensagem["bytes"]:
-            
+
+                # ==========================================
+                # RECEPTOR -> MAIN
+                # ==========================================
+
                 if tipo_cliente == "RECEPTOR":
-            
+
                     async with clientes_lock:
-            
+
                         receptor = clientes.get(
                             cliente_id
                         )
-            
+
                         if receptor is None:
                             continue
-            
+
                         main = receptor.get(
                             "main"
                         )
-            
-                    if main is not None:
-            
-                        await main.send_bytes(
-                            mensagem["bytes"]
-                        )
 
+                    if main is not None:
+
+                        try:
+
+                            await main.send_bytes(
+                                mensagem["bytes"]
+                            )
+
+                        except Exception as erro:
+
+                            print(
+                                "[SERVER] Erro FRAME -> MAIN:",
+                                repr(erro)
+                            )
+
+                # ==========================================
                 # MAIN -> RECEPTOR
+                # ==========================================
+
                 elif tipo_cliente == "MAIN":
 
-                    receptor_id = dados.get(
-                        "destino"
+                    print(
+                        "[SERVER] MAIN enviou bytes, mas ações devem ser JSON."
                     )
 
-                    if receptor_id in clientes:
-
-                        receptor = clientes[
-                            receptor_id
-                        ]
-
-                        await receptor[
-                            "websocket"
-                        ].send_bytes(
-                            mensagem["bytes"]
-                        )
+                    continue
 
     except WebSocketDisconnect:
 
-        pass
+        print(
+            "[SERVER] WebSocket desconectado:",
+            cliente_id
+        )
 
     except Exception as erro:
 
