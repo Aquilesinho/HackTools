@@ -239,7 +239,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 # =========================
 
                 if tipo_cliente == "RECEPTOR":
-                
+
                     async with clientes_lock:
                 
                         receptor = clientes.get(
@@ -255,8 +255,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 
                     if main is not None:
                 
-                        await main.send_text(
-                            mensagem["text"]
+                        await main.send_bytes(
+                            mensagem["bytes"]
                         )
                 
                     continue
