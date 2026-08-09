@@ -2,5 +2,5 @@ fastapi
 uvicorn[standard]
 mss
 Pillow
-pygame
+pygame-ce
 websocket-client
