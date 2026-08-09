@@ -68,12 +68,13 @@ async def websocket_endpoint(websocket: WebSocket):
             )
 
             async with clientes_lock:
-
+                
                 clientes[cliente_id] = {
                     "websocket": websocket,
                     "tipo": "RECEPTOR",
                     "usuario": usuario,
-                    "main": None
+                    "main": None,
+                    "main_receptor": None
                 }
 
             await enviar_json(
@@ -175,55 +176,61 @@ async def websocket_endpoint(websocket: WebSocket):
                 # =========================
 
                 if tipo_cliente == "MAIN" and tipo == "SEE_REQUEST":
-
+                
                     receptor_id = dados.get(
                         "id"
                     )
-
-                    if receptor_id not in clientes:
-
-                        await enviar_json(
-                            websocket,
-                            {
-                                "tipo": "ERROR",
-                                "mensagem": "Receptor não encontrado."
-                            }
+                
+                    async with clientes_lock:
+                
+                        receptor = clientes.get(
+                            receptor_id
                         )
-
-                        continue
-
-                    receptor = clientes[
-                        receptor_id
-                    ]
-
-                    if receptor.get("tipo") != "RECEPTOR":
-
-                        await enviar_json(
-                            websocket,
-                            {
-                                "tipo": "ERROR",
-                                "mensagem": "Destino inválido."
-                            }
-                        )
-
-                        continue
-
-                    # Guarda QUEM é o MAIN dessa sessão
-                    receptor["main"] = websocket
-
+                
+                        if receptor is None:
+                
+                            await enviar_json(
+                                websocket,
+                                {
+                                    "tipo": "ERROR",
+                                    "mensagem": "Receptor não encontrado."
+                                }
+                            )
+                
+                            continue
+                
+                        if receptor.get("tipo") != "RECEPTOR":
+                
+                            await enviar_json(
+                                websocket,
+                                {
+                                    "tipo": "ERROR",
+                                    "mensagem": "Destino inválido."
+                                }
+                            )
+                
+                            continue
+                
+                        receptor["main"] = websocket
+                        receptor["main_receptor"] = receptor_id
+                
+                        websocket_receptor = receptor[
+                            "websocket"
+                        ]
+                
                     print(
                         "[SERVER] SEE_REQUEST ->",
                         receptor_id
                     )
-
+                
                     await enviar_json(
-                        receptor["websocket"],
+                        websocket_receptor,
                         {
                             "tipo": "SEE_REQUEST",
                             "origem": "MAIN"
                         }
                     )
-
+                
                     continue
 
                 # =========================
@@ -231,20 +238,26 @@ async def websocket_endpoint(websocket: WebSocket):
                 # =========================
 
                 if tipo_cliente == "RECEPTOR":
-
-                    main = clientes.get(
-                        cliente_id,
-                        {}
-                    ).get(
-                        "main"
-                    )
-
+                
+                    async with clientes_lock:
+                
+                        receptor = clientes.get(
+                            cliente_id
+                        )
+                
+                        if receptor is None:
+                            continue
+                
+                        main = receptor.get(
+                            "main"
+                        )
+                
                     if main is not None:
-
+                
                         await main.send_text(
                             mensagem["text"]
                         )
-
+                
                     continue
 
                 # =========================
@@ -252,43 +265,52 @@ async def websocket_endpoint(websocket: WebSocket):
                 # =========================
 
                 if tipo_cliente == "MAIN":
-
+                
                     receptor_id = dados.get(
                         "destino"
                     )
-
-                    if receptor_id in clientes:
-
-                        receptor = clientes[
+                
+                    async with clientes_lock:
+                
+                        receptor = clientes.get(
                             receptor_id
+                        )
+                
+                        if receptor is None:
+                            continue
+                
+                        if receptor.get("tipo") != "RECEPTOR":
+                            continue
+                
+                        websocket_receptor = receptor[
+                            "websocket"
                         ]
-
-                        if receptor.get("tipo") == "RECEPTOR":
-
-                            await receptor[
-                                "websocket"
-                            ].send_text(
-                                mensagem["text"]
-                            )
+                
+                    await websocket_receptor.send_text(
+                        mensagem["text"]
+                    )
+                
+                    continue
 
             elif "bytes" in mensagem and mensagem["bytes"]:
-
-                # =========================
-                # RECEPTOR -> MAIN
-                # FRAMES
-                # =========================
-
+            
                 if tipo_cliente == "RECEPTOR":
-
-                    main = clientes.get(
-                        cliente_id,
-                        {}
-                    ).get(
-                        "main"
-                    )
-
+            
+                    async with clientes_lock:
+            
+                        receptor = clientes.get(
+                            cliente_id
+                        )
+            
+                        if receptor is None:
+                            continue
+            
+                        main = receptor.get(
+                            "main"
+                        )
+            
                     if main is not None:
-
+            
                         await main.send_bytes(
                             mensagem["bytes"]
                         )
