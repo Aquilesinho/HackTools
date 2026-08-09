@@ -266,10 +266,19 @@ async def websocket_endpoint(websocket: WebSocket):
                 # =========================
 
                 if tipo_cliente == "MAIN":
-                
+
                     receptor_id = dados.get(
                         "destino"
                     )
+                
+                    if not receptor_id:
+                        receptor_id = receptor_selecionado
+                
+                    if not receptor_id:
+                        print(
+                            "[SERVER] MAIN enviou ação sem receptor."
+                        )
+                        continue
                 
                     async with clientes_lock:
                 
@@ -287,9 +296,23 @@ async def websocket_endpoint(websocket: WebSocket):
                             "websocket"
                         ]
                 
-                    await websocket_receptor.send_text(
-                        mensagem["text"]
-                    )
+                    try:
+                
+                        await websocket_receptor.send_text(
+                            mensagem["text"]
+                        )
+                
+                        print(
+                            "[SERVER] AÇÃO ENVIADA:",
+                            mensagem["text"]
+                        )
+                
+                    except Exception as erro:
+                
+                        print(
+                            "[SERVER] Erro ao enviar ação:",
+                            repr(erro)
+                        )
                 
                     continue
 
