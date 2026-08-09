@@ -285,61 +285,47 @@ async def websocket_endpoint(websocket: WebSocket):
                 # ==========================================
 
                 if tipo_cliente == "MAIN":
-
-                    receptor_id = dados.get(
-                        "destino"
-                    )
-
-                    if not receptor_id:
-
-                        print(
-                            "[SERVER] AÇÃO sem destino:",
-                            mensagem["text"]
-                        )
-
-                        continue
-
+                
                     async with clientes_lock:
-
-                        receptor = clientes.get(
-                            receptor_id
-                        )
-
+                
+                        receptor = None
+                
+                        for id_cliente, cliente in clientes.items():
+                
+                            if cliente.get("tipo") != "RECEPTOR":
+                                continue
+                
+                            if cliente.get("main") is websocket:
+                
+                                receptor = cliente
+                                break
+                
                         if receptor is None:
-
-                            print(
-                                "[SERVER] Receptor não encontrado:",
-                                receptor_id
+                
+                            await enviar_json(
+                                websocket,
+                                {
+                                    "tipo": "ERROR",
+                                    "mensagem": "Nenhum receptor associado a este MAIN."
+                                }
                             )
-
+                
                             continue
-
-                        if receptor.get("tipo") != "RECEPTOR":
-                            continue
-
+                
                         websocket_receptor = receptor[
                             "websocket"
                         ]
-
-                    try:
-
-                        await websocket_receptor.send_text(
-                            mensagem["text"]
-                        )
-
-                        print(
-                            "[SERVER] AÇÃO ENVIADA ->",
-                            receptor_id,
-                            mensagem["text"]
-                        )
-
-                    except Exception as erro:
-
-                        print(
-                            "[SERVER] Erro ao enviar ação:",
-                            repr(erro)
-                        )
-
+                
+                    print(
+                        "[SERVER] AÇÃO -> RECEPTOR:",
+                        receptor.get("main_receptor"),
+                        dados
+                    )
+                
+                    await websocket_receptor.send_text(
+                        mensagem["text"]
+                    )
+                
                     continue
 
             # ==========================================
