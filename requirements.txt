@@ -3,4 +3,5 @@ uvicorn[standard]
 mss
 Pillow
 pygame-ce
+requests
 websocket-client
