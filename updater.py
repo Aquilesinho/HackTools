@@ -7,35 +7,28 @@ from http.server import BaseHTTPRequestHandler
 from http.server import HTTPServer
 
 
-# =========================
-# CONFIGURAÇÃO
-# =========================
-
 SERVIDORES = [
-    "https://hacktools-fdep.onrender.com/",
+    "https://hacktools-fdep.onrender.com/health",
 ]
 
-INTERVALO = 60
-TIMEOUT = 60
+INTERVALO = 300
+TIMEOUT = 30
 TENTATIVAS = 3
 
-PORTA = int(os.environ.get("PORT", 10000))
+PORTA = int(
+    os.environ.get(
+        "PORT",
+        10000
+    )
+)
 
-
-# =========================
-# SESSÃO HTTP
-# =========================
 
 sessao = requests.Session()
 
 sessao.headers.update({
-    "User-Agent": "RenderUpdater/1.0"
+    "User-Agent": "HackTools-KeepAlive/1.0"
 })
 
-
-# =========================
-# SERVIDOR HTTP
-# =========================
 
 class ServidorHTTP(BaseHTTPRequestHandler):
 
@@ -43,18 +36,13 @@ class ServidorHTTP(BaseHTTPRequestHandler):
 
         if self.path == "/":
 
-            mensagem = (
-                "RenderUpdater ONLINE\n"
-                "Keep-Alive ativo.\n"
-            )
-
-            dados = mensagem.encode("utf-8")
+            dados = b"HackTools Keep-Alive ONLINE"
 
             self.send_response(200)
 
             self.send_header(
                 "Content-Type",
-                "text/plain; charset=utf-8"
+                "text/plain"
             )
 
             self.send_header(
@@ -64,10 +52,8 @@ class ServidorHTTP(BaseHTTPRequestHandler):
 
             self.end_headers()
 
-            self.wfile.write(dados)
-
-            print(
-                "[HTTP] Requisição recebida em /"
+            self.wfile.write(
+                dados
             )
 
         elif self.path == "/health":
@@ -88,10 +74,8 @@ class ServidorHTTP(BaseHTTPRequestHandler):
 
             self.end_headers()
 
-            self.wfile.write(dados)
-
-            print(
-                "[HTTP] Health check recebido."
+            self.wfile.write(
+                dados
             )
 
         else:
@@ -112,7 +96,9 @@ class ServidorHTTP(BaseHTTPRequestHandler):
 
             self.end_headers()
 
-            self.wfile.write(dados)
+            self.wfile.write(
+                dados
+            )
 
     def log_message(self, formato, *args):
         return
@@ -121,71 +107,48 @@ class ServidorHTTP(BaseHTTPRequestHandler):
 def iniciar_http():
 
     servidor = HTTPServer(
-        ("0.0.0.0", PORTA),
+        (
+            "0.0.0.0",
+            PORTA
+        ),
         ServidorHTTP
     )
 
-    print()
-    print("==============================")
-    print("       HTTP SERVER")
-    print("==============================")
     print(
-        "[HTTP] Porta:",
+        "[HTTP] Servidor iniciado na porta:",
         PORTA
     )
-    print(
-        "[HTTP] Host: 0.0.0.0"
-    )
-    print("==============================")
-    print()
 
     servidor.serve_forever()
 
 
-# =========================
-# ACESSAR SERVIDOR
-# =========================
-
 def acessar_servidor(url):
 
-    for tentativa in range(1, TENTATIVAS + 1):
+    for tentativa in range(
+        1,
+        TENTATIVAS + 1
+    ):
 
         try:
 
-            print()
             print(
-                "[KEEP-ALIVE] Acessando:",
+                "[KEEP-ALIVE] GET:",
                 url
             )
-
-            print(
-                "[KEEP-ALIVE] Tentativa:",
-                tentativa,
-                "/",
-                TENTATIVAS
-            )
-
-            inicio = time.time()
 
             resposta = sessao.get(
                 url,
                 timeout=TIMEOUT
             )
 
-            tempo = time.time() - inicio
-
             print(
                 "[KEEP-ALIVE] Status:",
                 resposta.status_code
             )
 
-            print(
-                "[KEEP-ALIVE] Tempo:",
-                round(tempo, 2),
-                "segundos"
-            )
+            if resposta.status_code == 200:
 
-            return True
+                return True
 
         except requests.exceptions.RequestException as erro:
 
@@ -194,113 +157,41 @@ def acessar_servidor(url):
                 repr(erro)
             )
 
-            if tentativa < TENTATIVAS:
+        if tentativa < TENTATIVAS:
 
-                print(
-                    "[KEEP-ALIVE] Nova tentativa em 5 segundos..."
-                )
-
-                time.sleep(5)
-
-    print(
-        "[KEEP-ALIVE] Falha definitiva:",
-        url
-    )
+            time.sleep(5)
 
     return False
 
 
-# =========================
-# KEEP-ALIVE
-# =========================
-
 def keep_alive():
 
-    print()
-    print("==============================")
-    print("      KEEP-ALIVE INICIADO")
-    print("==============================")
-    print()
+    print(
+        "[KEEP-ALIVE] Iniciado."
+    )
 
     while True:
 
-        inicio = time.time()
-
-        sucessos = 0
-        falhas = 0
-
-        print()
-        print("==============================")
-        print("[KEEP-ALIVE] INICIANDO CICLO")
-        print("==============================")
-
         for servidor in SERVIDORES:
 
-            resultado = acessar_servidor(
+            acessar_servidor(
                 servidor
             )
 
-            if resultado:
-                sucessos += 1
-            else:
-                falhas += 1
-
-        tempo_ciclo = time.time() - inicio
-
-        print()
-        print("==============================")
-        print("[KEEP-ALIVE] CICLO FINALIZADO")
-        print("==============================")
-
         print(
-            "[KEEP-ALIVE] Sucessos:",
-            sucessos
-        )
-
-        print(
-            "[KEEP-ALIVE] Falhas:",
-            falhas
-        )
-
-        print(
-            "[KEEP-ALIVE] Duração:",
-            round(tempo_ciclo, 2),
-            "segundos"
-        )
-
-        print(
-            "[KEEP-ALIVE] Aguardando",
+            "[KEEP-ALIVE] Próximo ciclo em",
             INTERVALO,
-            "segundos..."
+            "segundos."
         )
 
-        time.sleep(INTERVALO)
+        time.sleep(
+            INTERVALO
+        )
 
 
-# =========================
-# INICIALIZAÇÃO
-# =========================
-
-print()
-print("================================")
-print("        RENDER UPDATER")
-print("================================")
 print(
-    "[SYSTEM] Porta:",
-    PORTA
+    "[SYSTEM] Render updater iniciado."
 )
-print(
-    "[SYSTEM] Servidores:",
-    len(SERVIDORES)
-)
-print(
-    "[SYSTEM] Intervalo:",
-    INTERVALO,
-    "segundos"
-)
-print("================================")
-print()
-
 
 thread_http = threading.Thread(
     target=iniciar_http,
@@ -308,6 +199,5 @@ thread_http = threading.Thread(
 )
 
 thread_http.start()
-
 
 keep_alive()
