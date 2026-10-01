@@ -92,8 +92,6 @@ async def adicionar_agendamento(dados):
             "mensagem": "Data ou hora inválida."
         }
 
-    # Verifica se o receptor existe
-
     async with clientes_lock:
 
         receptor = clientes.get(
@@ -126,10 +124,8 @@ async def adicionar_agendamento(dados):
 
         "hora": dados["hora"],
 
-        # Função que será executada
         "funcao": funcao,
 
-        # Guarda o receptor correto
         "receptor_id": receptor_id,
 
         "args": dados.get(
@@ -197,8 +193,6 @@ async def executar_agendamento(agendamento):
         )
 
         return
-
-    # Procura SOMENTE o receptor correto
 
     async with clientes_lock:
 
@@ -317,8 +311,6 @@ async def verificar_agendamentos():
             agendamentos.extend(
                 restantes
             )
-
-        # Executa somente os agendamentos vencidos
 
         for agendamento in executar:
 
@@ -498,7 +490,6 @@ async def websocket_endpoint(websocket: WebSocket):
                         websocket,
                         {
                             "tipo": "LIST_RESPONSE",
-
                             "dispositivos": lista
                         }
                     )
@@ -526,15 +517,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
 
                 # ==================================================
-                # MAIN -> SEE_REQUEST / CONTROL_REQUEST
+                # MAIN -> SEE_REQUEST
                 # ==================================================
 
                 if (
                     tipo_cliente == "MAIN"
-                    and tipo in (
-                        "SEE_REQUEST",
-                        "CONTROL_REQUEST"
-                    )
+                    and tipo == "SEE_REQUEST"
                 ):
 
                     receptor_id = dados.get(
@@ -571,9 +559,9 @@ async def websocket_endpoint(websocket: WebSocket):
 
                             continue
 
-                        # ------------------------------------------
-                        # ASSOCIA O RECEPTOR AO MAIN
-                        # ------------------------------------------
+                        # ==========================================
+                        # ASSOCIA RECEPTOR AO MAIN
+                        # ==========================================
 
                         receptor["main"] = websocket
 
@@ -584,34 +572,19 @@ async def websocket_endpoint(websocket: WebSocket):
                         ]
 
                     print(
-                        "[SERVER]",
-                        tipo,
-                        "->",
+                        "[SERVER] SEE_REQUEST ->",
                         receptor_id
                     )
 
-                    # ------------------------------------------
-                    # ENVIA O PEDIDO PARA O RECEPTOR
-                    # ------------------------------------------
+                    # ==========================================
+                    # MANDA O SEE_REQUEST PARA O RECEPTOR
+                    # ==========================================
 
                     await enviar_json(
                         websocket_receptor,
                         {
-                            "tipo": tipo,
+                            "tipo": "SEE_REQUEST",
                             "origem": "MAIN"
-                        }
-                    )
-
-                    # ------------------------------------------
-                    # CONFIRMA AO MAIN
-                    # ------------------------------------------
-
-                    await enviar_json(
-                        websocket,
-                        {
-                            "tipo": "REQUEST_ACCEPTED",
-                            "resposta": "ACEITO",
-                            "request": tipo
                         }
                     )
 
@@ -765,7 +738,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 elif tipo_cliente == "MAIN":
 
                     print(
-                        "[SERVER] MAIN enviou bytes, mas ações devem ser JSON."
+                        "[SERVER] MAIN enviou bytes, "
+                        "mas ações devem ser JSON."
                     )
 
                     continue
