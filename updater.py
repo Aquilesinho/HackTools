@@ -15,7 +15,7 @@ SERVIDORES = [
     "https://hacktools-fdep.onrender.com/",
 ]
 
-INTERVALO = 600
+INTERVALO = 60
 TIMEOUT = 60
 TENTATIVAS = 3
 
