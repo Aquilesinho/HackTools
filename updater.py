@@ -8,7 +8,7 @@ from http.server import HTTPServer
 
 
 SERVIDORES = [
-    "https://hacktools-fdep.onrender.com/health",
+    "https://hacktools-fdep.onrender.com/",
 ]
 
 INTERVALO = 300
