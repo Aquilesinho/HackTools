@@ -24,6 +24,7 @@ FUNCOES_AGENDAVEIS = {
 # ==========================================================
 
 async def enviar_json(websocket, dados):
+
     await websocket.send_text(
         json.dumps(dados)
     )
@@ -35,6 +36,7 @@ async def enviar_json(websocket, dados):
 
 @app.get("/")
 async def inicio():
+
     return {
         "status": "HackToolsServer online"
     }
@@ -42,6 +44,7 @@ async def inicio():
 
 @app.get("/health")
 async def health():
+
     return {
         "status": "ok"
     }
@@ -53,17 +56,23 @@ async def health():
 
 async def adicionar_agendamento(dados):
 
-    funcao = dados.get("funcao")
+    funcao = dados.get(
+        "funcao"
+    )
 
     if funcao not in FUNCOES_AGENDAVEIS:
+
         return {
             "tipo": "ERROR",
             "mensagem": "Função não permitida para agendamento."
         }
 
-    receptor_id = dados.get("id")
+    receptor_id = dados.get(
+        "id"
+    )
 
     if not receptor_id:
+
         return {
             "tipo": "ERROR",
             "mensagem": "ID do receptor não informado."
@@ -84,6 +93,7 @@ async def adicionar_agendamento(dados):
         }
 
     # Verifica se o receptor existe
+
     async with clientes_lock:
 
         receptor = clientes.get(
@@ -116,9 +126,9 @@ async def adicionar_agendamento(dados):
 
         "hora": dados["hora"],
 
+        # Função que será executada
         "funcao": funcao,
 
-        # IMPORTANTE:
         # Guarda o receptor correto
         "receptor_id": receptor_id,
 
@@ -189,6 +199,7 @@ async def executar_agendamento(agendamento):
         return
 
     # Procura SOMENTE o receptor correto
+
     async with clientes_lock:
 
         receptor = clientes.get(
@@ -308,6 +319,7 @@ async def verificar_agendamentos():
             )
 
         # Executa somente os agendamentos vencidos
+
         for agendamento in executar:
 
             await executar_agendamento(
@@ -514,12 +526,15 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
 
                 # ==================================================
-                # MAIN -> SEE_REQUEST
+                # MAIN -> SEE_REQUEST / CONTROL_REQUEST
                 # ==================================================
 
                 if (
                     tipo_cliente == "MAIN"
-                    and tipo == "SEE_REQUEST"
+                    and tipo in (
+                        "SEE_REQUEST",
+                        "CONTROL_REQUEST"
+                    )
                 ):
 
                     receptor_id = dados.get(
@@ -556,7 +571,10 @@ async def websocket_endpoint(websocket: WebSocket):
 
                             continue
 
-                        # Vincula esse receptor ao MAIN
+                        # ------------------------------------------
+                        # ASSOCIA O RECEPTOR AO MAIN
+                        # ------------------------------------------
+
                         receptor["main"] = websocket
 
                         receptor["main_receptor"] = receptor_id
@@ -566,15 +584,34 @@ async def websocket_endpoint(websocket: WebSocket):
                         ]
 
                     print(
-                        "[SERVER] SEE_REQUEST ->",
+                        "[SERVER]",
+                        tipo,
+                        "->",
                         receptor_id
                     )
+
+                    # ------------------------------------------
+                    # ENVIA O PEDIDO PARA O RECEPTOR
+                    # ------------------------------------------
 
                     await enviar_json(
                         websocket_receptor,
                         {
-                            "tipo": "SEE_REQUEST",
+                            "tipo": tipo,
                             "origem": "MAIN"
+                        }
+                    )
+
+                    # ------------------------------------------
+                    # CONFIRMA AO MAIN
+                    # ------------------------------------------
+
+                    await enviar_json(
+                        websocket,
+                        {
+                            "tipo": "REQUEST_ACCEPTED",
+                            "resposta": "ACEITO",
+                            "request": tipo
                         }
                     )
 
