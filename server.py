@@ -762,23 +762,48 @@ async def websocket_endpoint(websocket: WebSocket):
 
     finally:
 
-        # ==================================================
-        # REMOVE RECEPTOR
-        # ==================================================
-
+        # ==========================================================
+        # LIMPA ASSOCIAÇÃO DO MAIN / REMOVE CLIENTE
+        # ==========================================================
+    
         if cliente_id is not None:
-
+    
             async with clientes_lock:
-
-                if cliente_id in clientes:
-
-                    del clientes[
-                        cliente_id
-                    ]
-
+    
+                # Se era um RECEPTOR, remove normalmente
+                cliente = clientes.get(cliente_id)
+    
+                if cliente is not None:
+    
+                    if cliente.get("tipo") == "RECEPTOR":
+    
+                        del clientes[cliente_id]
+    
+                    # Se era MAIN, precisamos desassociá-lo
+                    # de qualquer receptor que apontava para ele.
+                    elif cliente.get("tipo") == "MAIN":
+    
+                        for id_receptor, receptor in clientes.items():
+    
+                            if receptor.get("tipo") != "RECEPTOR":
+                                continue
+    
+                            if receptor.get("main") is websocket:
+    
+                                print(
+                                    "[SERVER] MAIN desconectado.",
+                                    "Limpando associação do receptor:",
+                                    id_receptor
+                                )
+    
+                                receptor["main"] = None
+                                receptor["main_receptor"] = None
+    
             print(
-                "[SERVER] Cliente removido:",
-                cliente_id
+                "[SERVER] Cliente desconectado:",
+                cliente_id,
+                "tipo:",
+                tipo_cliente
             )
 
 
