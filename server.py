@@ -720,8 +720,11 @@ async def websocket_endpoint(websocket: WebSocket):
 
                         try:
 
-                            print("[SERVER] FRAME -> MAIN:", len(mensagem["bytes"]))
+                            print("[SERVER] FRAME RECEBIDO:", len(mensagem["bytes"]))
+                            
                             await main.send_bytes(mensagem["bytes"])
+                            
+                            print("[SERVER] FRAME ENVIADO AO MAIN")
 
                         except Exception as erro:
 
