@@ -5,3 +5,4 @@ Pillow
 pygame-ce
 requests
 websocket-client
+python-multipart
