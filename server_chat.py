@@ -1,4 +1,3 @@
-```python
 import os
 import uuid
 import sqlite3
@@ -855,4 +854,3 @@ def root():
         "status": "online",
         "version": "0.1.0"
     }
-```
